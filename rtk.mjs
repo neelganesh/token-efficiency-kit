@@ -48,7 +48,7 @@ export function checks({ HOME, tool, scope, repo }) {
   const vf = sh('rtk', ['verify']);
   add(vf.ok ? 'PASS' : 'WARN', 'rtk verify', vf.ok ? 'hook integrity and filter tests pass' : vf.out.split('\n').slice(-2).join(' '));
   const rg = !sh('rg', ['--version']).missing;
-  add(rg ? 'PASS' : 'WARN', 'ripgrep', rg ? 'found' : 'missing: some RTK filters call `rg`; winget install BurntSushi.ripgrep.MSVC');
+  add(rg ? 'PASS' : 'WARN', 'ripgrep', rg ? 'found' : `missing: some RTK filters call \`rg\`; ${{ win32: 'winget install BurntSushi.ripgrep.MSVC', darwin: 'brew install ripgrep' }[process.platform] || 'install ripgrep with your package manager'}`);
   return rows;
 }
 
@@ -83,6 +83,10 @@ function installable(tags) {
     const lit = {};
     for (const m of sh('winget', ['show', '--id', 'rtk-ai.rtk', '--versions']).out.matchAll(/^\s*(v?(\d+\.\d+\.\d+))\s*$/gm)) lit[m[2]] = m[1];
     return lit;
+  }
+  if (process.platform === 'darwin') { // Homebrew ships only its current formula version
+    const v = (sh('brew', ['info', '--json=v2', 'rtk']).out.match(/"stable":\s*"(\d+\.\d+\.\d+)"/) || [])[1];
+    if (v) return { [v]: v };
   }
   return Object.fromEntries(tags.map((t) => [t, t]));
 }
@@ -144,7 +148,7 @@ export async function rtkSetup({ HOME, args, log, ask, record }) {
   if (process.env.RTK_TELEMETRY_DISABLED !== '1') {
     if (process.platform === 'win32') {
       if (await ask('Persist RTK_TELEMETRY_DISABLED=1 for your user (setx), blocking telemetry even if consent is given later?')) { if (!dry) sh('setx', ['RTK_TELEMETRY_DISABLED', '1']); log('set (applies to NEW terminals)'); }
-    } else log('Add to your shell profile: export RTK_TELEMETRY_DISABLED=1');
+    } else log(`Add to your shell profile (${process.platform === 'darwin' ? '~/.zshrc' : '~/.bashrc'}): export RTK_TELEMETRY_DISABLED=1`);
   }
 
   if (!checks(o).some(([s, n]) => s === 'PASS' && /hook (file|registered)/.test(n))) {

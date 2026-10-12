@@ -9,10 +9,10 @@ Paste the prompt in [PROMPT.md](PROMPT.md) into your coding agent. It pulls this
 ## Or one command
 
 ```bash
-git clone --depth 1 --branch v2.0.1 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
+git clone --depth 1 --branch v2.0.2 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
 ```
 
-PowerShell 5: replace `&&` with `;`. Needs Node 18+ and git. You get a checkbox list (type numbers to toggle, Enter to continue):
+Works on macOS, Linux and Windows (CI runs the tests on all three). On macOS RTK installs with `brew install rtk` (Homebrew cannot pin a version, so the kit audits whatever version brew offers); on Windows PowerShell 5, replace `&&` with `;`. Needs Node 18+ and git. You get a checkbox list (type numbers to toggle, Enter to continue):
 
 ```
  [x] 1. Core rules file: smallest change, read less, concise replies  (+272 tokens; the token saver)
