@@ -37,3 +37,7 @@ RTK payload code beyond lines 150-166; per-turn overhead of all three on real wo
 - The instruction block (~260 tokens) tells the model to prefix commands with `rtk`; with the VS Code hook it is redundant. `kit.mjs rtk --slim` removes it with a backup.
 - Verified on RTK 0.48.0: `rtk hook copilot` rewrote `git status` to `rtk git status` and passed `echo hi` through; `rtk rewrite "git status"` printed the rewrite with exit code 3 (so the kit reads output, not exit code); `rtk verify` reported 154/154 tests.
 - Unverified: VS Code's own switch for agent hooks on every version; confirm with the live check.
+
+## models.mjs (added in v1.3.0)
+- The only kit code that sends an API key: one GET to `https://api.anthropic.com/v1/models`, header `x-api-key` from the `ANTHROPIC_API_KEY` environment variable, `anthropic-version: 2023-06-01`, redirects disabled, 15s timeout, host allow-list (`api.anthropic.com`, `127.0.0.1`, `localhost`), runs only with `--live` after a y/N prompt. The key is never written, logged or printed (tested). Optional: delete the file and `kit.mjs` reports "offline build".
+- Copilot: no documented model-listing API was found in GitHub's docs (2026-10-12), so none is called. The CLI documents `--model`, `COPILOT_MODEL` and `~/.copilot/settings.json` key `model`; the kit writes only the last.

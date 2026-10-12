@@ -1,11 +1,11 @@
 # token-efficiency-kit
 
-Cut the tokens your coding agent loads and reads, without adding any. Works with **Claude Code, Codex and GitHub Copilot**. The kit's own code makes no network calls and has no telemetry, gateway or hooks. The only networked action is the optional RTK install, which runs your package manager after you confirm.
+Cut the tokens your coding agent loads and reads, without adding any. Works with **Claude Code, Codex and GitHub Copilot**. By default the kit's own code makes no network calls and has no telemetry, gateway or hooks. Two optional, confirmed actions touch the network: the RTK install (runs your package manager) and `models --live` (one read-only GET to Anthropic's `/v1/models`, key from your environment only). The second lives in its own file, `models.mjs`; delete it for a fully offline kit.
 
 ## One-line install (asks before every change)
 
 ```bash
-git clone --depth 1 --branch v1.2.1 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
+git clone --depth 1 --branch v1.3.0 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
 ```
 
 PowerShell 5: replace `&&` with `;`. For Copilot, run inside your repo and add `--repo .` to `setup`. Needs Node 18+ and git.
@@ -19,7 +19,7 @@ Not sure what bloats your setup? Run `node token-efficiency-kit/kit.mjs inspect`
 In your repo (needs Node 18+ and git; Windows, macOS or Linux):
 
 ```bash
-git clone --depth 1 --branch v1.2.1 https://github.com/neelganesh/token-efficiency-kit.git ../token-efficiency-kit
+git clone --depth 1 --branch v1.3.0 https://github.com/neelganesh/token-efficiency-kit.git ../token-efficiency-kit
 node ../token-efficiency-kit/kit.mjs inspect --tool copilot --repo .     # what Copilot loads per request, with fixes
 node ../token-efficiency-kit/kit.mjs setup --repo .                      # adds a ~270-token rules file, asks first
 node ../token-efficiency-kit/kit.mjs rtk --tool copilot --repo .         # optional: shell-output compression
@@ -66,6 +66,7 @@ Measured on a real 5-week history: output was ~4-7% of weighted cost, and cache 
 |---|---|
 | `inspect [--tool claude\|codex\|copilot\|all] [--repo PATH] [--no-usage]` | what each agent loads before your first message; MCP, plugin and skill waste; ranked fixes |
 | `rtk [--tool copilot\|claude] [--scope repo\|global] [--repo PATH] [--check] [--slim]` | confirmed RTK install + hook + PASS/FAIL verification |
+| `models [--tool claude\|copilot] [--live] [--model ID]` | Claude: list the newest models live (opt-in, `ANTHROPIC_API_KEY` from env) and set `model` and the subagent default. Copilot CLI: set `model` from an ID you give (no documented listing API) |
 | `setup [--yes] [--repo PATH] [--max-added N] [--with-rtk]` | guided audit + install + baseline; offers RTK at the end |
 | `audit [--strict]` | read-only report (gateways, plaintext keys, cloud skills, skill count, RTK) |
 | `install --tool claude\|codex\|copilot\|all` | non-interactive install; flags `--with-ponytail-skill`, `--with-caveman`, `--apply-settings`, `--force` |

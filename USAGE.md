@@ -79,3 +79,12 @@ Moves Caveman Cloud skills to `~/.claude/skills.disabled/` (move them back to un
 ## 5. Habits that matter more than any tool
 
 Start a new session per task, `/clear` between unrelated tasks, do not switch models mid-session, and keep always-loaded text short. See [MEASURE.md](MEASURE.md).
+
+## `models` : list and set default models
+```
+node kit.mjs models [--tool claude|copilot] [--live] [--model ID] [--yes] [--dry-run]
+```
+- Asks which tool if you do not pass `--tool`, and asks before every write.
+- **claude**: without `--live` it offers the aliases `sonnet` (main) and `haiku` (subagents), which always resolve to the newest model, so they never go stale. With `--live` it asks first, then makes **one read-only GET to `api.anthropic.com/v1/models`** using `ANTHROPIC_API_KEY` from your environment (never from files, never stored or printed; refuses any other host), shows the newest model per family, and lets you keep the aliases or pin a full ID. Writes `model` and `CLAUDE_CODE_SUBAGENT_MODEL` to `~/.claude/settings.json` with a backup. Skipped when `ANTHROPIC_BASE_URL` is set. Applies to new sessions.
+- **copilot** (Copilot CLI): GitHub documents no API that lists the models of your plan, so the kit does not guess one. Run `/model` in Copilot CLI to see them, then pass an ID (or `auto`): the kit sets `model` in `~/.copilot/settings.json` (`$COPILOT_HOME` respected) with a backup. VS Code Copilot Chat uses its model picker; no default-model setting is documented. Repo allowlists (`.github/allowed_models.txt`) and managed defaults are admin policy and are never touched.
+- For a workplace, delete `models.mjs` to remove the only code that can send a key over the network.

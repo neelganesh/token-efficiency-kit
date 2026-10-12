@@ -140,3 +140,55 @@ test('rtk --check without rtk on PATH reports FAIL and does not crash', () => {
   assert.match(out, /FAIL\s+binary/);
   assert.match(out, /Live check/);
 });
+
+import http from 'node:http';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const execP = promisify(execFile);
+const runAsync = (home, env, ...a) => execP(process.execPath, [kit, ...a], { env: { ...process.env, KIT_HOME: home, ...env }, encoding: 'utf8' });
+
+test('models --live lists newest per family from a local server and sets aliases; key never printed', async () => {
+  let seenKey = null;
+  const srv = http.createServer((req, res) => {
+    seenKey = req.headers['x-api-key'];
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ data: [{ id: 'claude-opus-9', display_name: 'Opus 9' }, { id: 'claude-sonnet-9', display_name: 'Sonnet 9' }, { id: 'claude-haiku-9', display_name: 'Haiku 9' }, { id: 'claude-sonnet-8', display_name: 'Sonnet 8' }], has_more: false }));
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const h = tmp();
+  try {
+    const { stdout } = await runAsync(h, { ANTHROPIC_API_KEY: 'sk-test-secret', KIT_ANTHROPIC_URL: `http://127.0.0.1:${srv.address().port}` }, 'models', '--tool', 'claude', '--live', '--yes');
+    assert.match(stdout, /sonnet\s+claude-sonnet-9/);
+    assert.ok(!stdout.includes('sk-test-secret'));
+    assert.equal(seenKey, 'sk-test-secret');
+    const s = JSON.parse(fs.readFileSync(path.join(h, '.claude', 'settings.json'), 'utf8'));
+    assert.equal(s.model, 'sonnet'); assert.equal(s.env.CLAUDE_CODE_SUBAGENT_MODEL, 'haiku');
+  } finally { srv.close(); }
+});
+
+test('models --live without a key and models with a gateway write nothing', async () => {
+  const h = tmp();
+  const a = await runAsync(h, { ANTHROPIC_API_KEY: '' }, 'models', '--tool', 'claude', '--live', '--yes');
+  assert.match(a.stdout, /needs ANTHROPIC_API_KEY/);
+  assert.equal(fs.existsSync(path.join(h, '.claude', 'settings.json')), false);
+  fs.mkdirSync(path.join(h, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(h, '.claude', 'settings.json'), JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://gw.example' } }));
+  const b = await runAsync(h, {}, 'models', '--tool', 'claude', '--yes');
+  assert.match(b.stdout, /skip: ANTHROPIC_BASE_URL/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(h, '.claude', 'settings.json'), 'utf8')).model, undefined);
+});
+
+test('models --live refuses to send a key to a non-Anthropic host', async () => {
+  await assert.rejects(runAsync(tmp(), { ANTHROPIC_API_KEY: 'k', KIT_ANTHROPIC_URL: 'https://evil.example' }, 'models', '--tool', 'claude', '--live', '--yes'), /refusing to send a key/);
+});
+
+test('copilot model is written to settings.json with a backup; bad IDs rejected', async () => {
+  const h = tmp(); const f = path.join(h, '.copilot', 'settings.json');
+  fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify({ theme: 'x' }));
+  await runAsync(h, { COPILOT_HOME: '' }, 'models', '--tool', 'copilot', '--model', 'gpt-6-luna', '--yes');
+  const s = JSON.parse(fs.readFileSync(f, 'utf8'));
+  assert.equal(s.model, 'gpt-6-luna'); assert.equal(s.theme, 'x');
+  assert.ok(fs.existsSync(f + '.pre-token-kit'));
+  const bad = await runAsync(h, { COPILOT_HOME: '' }, 'models', '--tool', 'copilot', '--model', 'a b;rm', '--yes');
+  assert.match(bad.stdout, /invalid model ID/);
+});

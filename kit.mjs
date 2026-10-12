@@ -243,8 +243,19 @@ async function rtk() {
   try { await rtkSetup({ HOME, args, log, ask }); } finally { rl?.close(); }
 }
 
-const cmds = { setup, audit, install, fix, verify, budget, measure, rtk, inspect: () => inspect({ HOME, args, log, firstCalls }) };
+async function models() {
+  let mod;
+  try { mod = await import('./models.mjs'); } catch { return log('models.mjs is not present (offline build): nothing to do.'); }
+  const yes = flag('--yes');
+  const rl = yes ? null : readline.createInterface({ input: process.stdin, output: process.stdout });
+  const closed = rl ? new Promise((r) => rl.once('close', () => r('n'))) : null;
+  const ask = async (q) => { if (yes) return true; try { return /^y/i.test(String(await Promise.race([rl.question(`${q} [y/N] `), closed])).trim()); } catch { return false; } };
+  const say = async (q) => { if (yes) return ''; try { return String(await Promise.race([rl.question(`${q} `), closed])).trim(); } catch { return ''; } };
+  try { await mod.modelsSetup({ HOME, args, log, ask, say }); } finally { rl?.close(); }
+}
+
+const cmds = { setup, audit, install, fix, verify, budget, measure, rtk, models, inspect: () => inspect({ HOME, args, log, firstCalls }) };
 if (!cmds[cmd]) {
-  log('usage: node kit.mjs <setup|inspect|rtk|audit|install|fix|verify|budget|measure>\n  setup [--yes] [--repo PATH] [--max-added N]   guided, asks before each change\n  install [--tool claude|codex|copilot|all] [--repo PATH] [--with-ponytail-skill] [--with-caveman] [--apply-settings] [--force]\n  inspect [--tool claude|codex|copilot|all] [--repo PATH] [--no-usage]   what each agent loads before your first message + ranked fixes\n  rtk [--tool copilot|claude] [--scope repo|global] [--repo PATH] [--check] [--slim]   confirmed RTK install + hook + verification\n  common: [--dry-run] [--strict] [--last N]');
+  log('usage: node kit.mjs <setup|inspect|rtk|models|audit|install|fix|verify|budget|measure>\n  setup [--yes] [--repo PATH] [--max-added N]   guided, asks before each change\n  install [--tool claude|codex|copilot|all] [--repo PATH] [--with-ponytail-skill] [--with-caveman] [--apply-settings] [--force]\n  inspect [--tool claude|codex|copilot|all] [--repo PATH] [--no-usage]   what each agent loads before your first message + ranked fixes\n  rtk [--tool copilot|claude] [--scope repo|global] [--repo PATH] [--check] [--slim]   confirmed RTK install + hook + verification\n  models [--tool claude|copilot] [--live] [--model ID]   list Claude models live (opt-in, needs ANTHROPIC_API_KEY) and set defaults\n  common: [--dry-run] [--strict] [--last N]');
   process.exitCode = cmd ? 2 : 0;
 } else await cmds[cmd]();

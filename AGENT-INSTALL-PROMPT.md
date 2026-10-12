@@ -3,7 +3,7 @@
 Paste the block into Claude Code, Codex or GitHub Copilot agent mode (needs shell, git, Node 18+).
 
 ```
-Install token-efficient defaults from https://github.com/neelganesh/token-efficiency-kit, pinned to tag v1.2.1, for the tool I am running in. Do it end to end, asking me for ONE confirmation.
+Install token-efficient defaults from https://github.com/neelganesh/token-efficiency-kit, pinned to tag v1.3.0, for the tool I am running in. Do it end to end, asking me for ONE confirmation.
 
 Hard rules
 - Added always-loaded tokens must be <= 600 in total, and my first-call context must not go up. If the measured result is worse than the baseline, undo it (restore the *.pre-token-kit backups) and tell me.
@@ -12,7 +12,7 @@ Hard rules
 - Stop and ask if anything conflicts with managed or enterprise policy.
 
 Steps
-1. Clone with --depth 1 --branch v1.2.1 into a new empty folder outside any project. Read README.md, kit.mjs and AGENTS.md. Search kit.mjs, inspect.mjs and rtk.mjs for "http", "fetch(", "node:net", "node:http", "curl", "wget"; the only expected hit is the RTK repository URL in rtk.mjs (used only in a cargo install command that runs after I confirm). Run: node kit.mjs verify and: node --test kit.test.mjs (both must pass).
+1. Clone with --depth 1 --branch v1.3.0 into a new empty folder outside any project. Read README.md, kit.mjs and AGENTS.md. Search kit.mjs, inspect.mjs, rtk.mjs and models.mjs for "http", "fetch(", "node:net", "node:http", "curl", "wget"; the only expected hits are the RTK repository URL in rtk.mjs (a cargo install command that runs after I confirm) and, in the optional models.mjs, one fetch to api.anthropic.com that runs only with --live after I confirm. If my security policy forbids network code, delete models.mjs. Run: node kit.mjs verify and: node --test kit.test.mjs (both must pass).
 2. Plan (read-only): node kit.mjs audit ; node kit.mjs budget ; node kit.mjs setup --yes --dry-run (add --repo <path> if I use Copilot in a repo). Summarize in one table: files to change, tokens added, audit WARNs, overlaps with my config.
 3. Ask me ONE yes/no question: "Apply this plan?" Wait.
 4. On yes: node kit.mjs setup --yes (same --repo). Also run node kit.mjs fix if the plan listed Caveman Cloud skills.
