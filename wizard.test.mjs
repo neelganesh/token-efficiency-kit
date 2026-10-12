@@ -132,3 +132,13 @@ test('existing unmarked routing section is detected: no duplicate block, agent s
   assert.ok(!claudeMd(h).includes('token-kit-routing'));
   assert.ok(fs.existsSync(path.join(h, '.claude', 'agents', 'opus-reviewer.md')));
 });
+
+test('uninstall reports RTK hook and install recorded in the log, with how to remove them', () => {
+  const [h] = withRepo();
+  fs.mkdirSync(path.join(h, '.token-kit'), { recursive: true });
+  fs.writeFileSync(path.join(h, '.token-kit', 'log.jsonl'),
+    JSON.stringify({ ts: 't', action: 'rtk-install', file: 'winget install --id rtk-ai.rtk' }) + '\n' + JSON.stringify({ ts: 't', action: 'rtk-hook', file: '/r/.github/hooks/rtk-rewrite.json' }) + '\n');
+  const out = run(h, undefined, 'uninstall', '--dry-run');
+  assert.match(out, /rtk init --uninstall --copilot/);
+  assert.match(out, /winget uninstall rtk-ai\.rtk/);
+});

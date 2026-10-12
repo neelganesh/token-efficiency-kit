@@ -144,5 +144,7 @@ export function uninstall(d) {
     else d.log(`left alone (edited or not ours): ${f}`);
   }
   for (const m of entries.filter((e) => e.action === 'move')) d.log(`moved earlier, restore by hand if wanted: ${m.file}`);
+  for (const h of entries.filter((e) => e.action === 'rtk-hook')) d.log(`RTK hook was written at ${h.file}: remove it with  rtk init --uninstall --copilot  (run in that repo; use  rtk init -g --uninstall  for Claude Code)`);
+  for (const i of entries.filter((e) => e.action === 'rtk-install')) d.log(`RTK was installed with: ${i.file}. Remove it with your package manager (winget uninstall rtk-ai.rtk, brew uninstall rtk, or cargo uninstall rtk).`);
   d.log('Settings changes (model, env) are not auto-reverted: restore settings.json from settings.json.pre-token-kit if you want the old values.');
 }

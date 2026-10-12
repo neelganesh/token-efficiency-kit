@@ -109,7 +109,7 @@ async function chooseVersion({ log, ask }) {
   return lit[fb];
 }
 
-export async function rtkSetup({ HOME, args, log, ask }) {
+export async function rtkSetup({ HOME, args, log, ask, record }) {
   const flag = (f) => args.includes(f);
   const opt = (f, d) => { const i = args.indexOf(f); return i > -1 ? args[i + 1] : d; };
   const tool = opt('--tool', 'copilot'), scope = opt('--scope', 'repo'), repo = path.resolve(opt('--repo', process.cwd()));
@@ -119,7 +119,7 @@ export async function rtkSetup({ HOME, args, log, ask }) {
   const insFile = insFileOf(scope, repo, HOME);
   if (flag('--check')) { show(checks(o), log); return liveCheck(log, tool); }
   if (flag('--audit-latest')) { await chooseVersion({ log, ask: async () => false }); return; }
-  if (flag('--slim')) { if (flag('--yes') || await ask(`Remove RTK's instruction block from ${insFile}?`)) slim(insFile, log, dry); return; }
+  if (flag('--slim')) { if (flag('--yes') || await ask(`Remove RTK's instruction block from ${insFile}?`)) (slim(insFile, log, dry), !dry && record?.('write', insFile)); return; }
 
   log('RTK setup (confirmed step by step). Current state:');
   show(checks(o), log);
@@ -133,6 +133,7 @@ export async function rtkSetup({ HOME, args, log, ask }) {
     if (dry) log(`[dry-run] ${bin} ${a.join(' ')}`);
     else {
       const r = sh(bin, a, { stdio: 'inherit' });
+      if (r.code === 0) record?.('rtk-install', `${bin} ${a.join(' ')}`);
       if (r.missing) return log(`${bin} not found. Install it, or download the release for your OS from https://github.com/rtk-ai/rtk/releases and verify its checksum, then re-run.`);
       if (r.code !== 0) return log(`install exited with code ${r.code}. If version ${PIN} is unavailable, install the latest manually (unaudited) and re-run: node kit.mjs rtk`);
       if (sh('rtk', ['--version']).missing) return log('RTK installed but not on PATH in this terminal. Open a NEW terminal and re-run: node kit.mjs rtk');
@@ -150,10 +151,10 @@ export async function rtkSetup({ HOME, args, log, ask }) {
     const cmd = tool === 'copilot' ? (scope === 'global' ? ['init', '-g', '--copilot'] : ['init', '--copilot']) : ['init', '-g'];
     const writes = tool === 'copilot' ? `${hookFile(tool, scope, repo, HOME)} and an RTK block in ${insFile}` : `a PreToolUse hook in ${hookFile(tool, scope, repo, HOME)} (RTK asks before patching it)`;
     if (await ask(`Run \`rtk ${cmd.join(' ')}\`${tool === 'copilot' && scope === 'repo' ? ` in ${repo}` : ''}? It writes ${writes}.`)) {
-      if (dry) log(`[dry-run] rtk ${cmd.join(' ')}`); else sh('rtk', cmd, { cwd: repo, stdio: 'inherit' });
+      if (dry) log(`[dry-run] rtk ${cmd.join(' ')}`); else { sh('rtk', cmd, { cwd: repo, stdio: 'inherit' }); record?.('rtk-hook', hookFile(tool, scope, repo, HOME)); }
     }
   }
-  if (tool === 'copilot' && BLOCK.test(rd(insFile)) && await ask(`Remove RTK's instruction block from ${insFile} (~${tok(rd(insFile).match(BLOCK)[0])} tokens per request; the VS Code hook already rewrites commands; keep it if you also use Copilot CLI)?`)) slim(insFile, log, dry);
+  if (tool === 'copilot' && BLOCK.test(rd(insFile)) && await ask(`Remove RTK's instruction block from ${insFile} (~${tok(rd(insFile).match(BLOCK)[0])} tokens per request; the VS Code hook already rewrites commands; keep it if you also use Copilot CLI)?`)) (slim(insFile, log, dry), !dry && record?.('write', insFile));
 
   log('\nFinal verification:');
   show(checks(o), log);

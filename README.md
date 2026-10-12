@@ -9,7 +9,7 @@ Paste the prompt in [PROMPT.md](PROMPT.md) into your coding agent. It pulls this
 ## Or one command
 
 ```bash
-git clone --depth 1 --branch v2.0.0 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
+git clone --depth 1 --branch v2.0.1 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
 ```
 
 PowerShell 5: replace `&&` with `;`. Needs Node 18+ and git. You get a checkbox list (type numbers to toggle, Enter to continue):

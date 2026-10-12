@@ -194,7 +194,7 @@ async function withIO(fn) {
   const prompt = (q) => { process.stdout.write(`${q} `); if (lines.length) return Promise.resolve(lines.shift()); if (ended) return Promise.resolve(null); return new Promise((r) => { waiter = r; }); };
   const ask = async (q) => { if (yes) return true; const a = await prompt(`${q} [y/N]`); return a !== null && /^y/i.test(a.trim()); };
   const say = async (q) => { if (yes) return ''; return String((await prompt(q)) ?? '').trim(); };
-  const d = { HOME, ROOT, args, flag, opt, log, rd, read, write, put, upsert, fix, applySettings, verify, audit, saveBaseline, rtkSetup, ponytailPlugin, tok, CLOUD, readLog, ask, say };
+  const d = { HOME, ROOT, args, flag, opt, log, rd, read, write, put, upsert, fix, applySettings, verify, audit, saveBaseline, rtkSetup, ponytailPlugin, tok, CLOUD, readLog, record, ask, say };
   try { await fn(d); } finally { rl?.close(); }
 }
 
