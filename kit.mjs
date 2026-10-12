@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// token-efficiency-kit: setup / audit / install / fix / verify / budget / measure. No dependencies, no network.
+// token-efficiency-kit: setup (checkbox wizard), inspect, rtk, audit, fix, verify, budget, measure, log, uninstall. No dependencies; network only in the optional rtk and models commands.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,11 +9,10 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { inspect } from './inspect.mjs';
 import { rtkSetup } from './rtk.mjs';
+import * as wiz from './wizard.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const HOME = process.env.KIT_HOME || os.homedir();
-const START = '<!-- token-kit:start -->';
-const END = '<!-- token-kit:end -->';
 const CLOUD = ['caveman-setup', 'caveman-discover', 'caveman-evidence-review', 'caveman-manage', 'caveman-optimize', 'caveman-learn'];
 const RTK_AUDITED = '0.49.0';
 const TEST_PROMPT = 'Reply with exactly one word: ok';
@@ -33,15 +32,25 @@ const median = (a) => { const s = [...a].sort((x, y) => x - y); return s.length 
 function write(file, text) {
   if (dry) return log(`[dry-run] write ${file}`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  if (fs.existsSync(file) && !fs.existsSync(file + '.pre-token-kit')) fs.copyFileSync(file, file + '.pre-token-kit');
+  if (fs.existsSync(file) && !fs.existsSync(file + '.pre-token-kit') && !readLog().some((e) => e.file === file)) fs.copyFileSync(file, file + '.pre-token-kit');
   fs.writeFileSync(file, text);
+  record('write', file);
   log(`wrote ${file}`);
 }
+// append-only audit trail of every change this kit makes; read it with `node kit.mjs log`, undo with `uninstall`
+const LOG = () => path.join(HOME, '.token-kit', 'log.jsonl');
+function record(action, file) {
+  if (dry) return;
+  fs.mkdirSync(path.dirname(LOG()), { recursive: true });
+  fs.appendFileSync(LOG(), JSON.stringify({ ts: new Date().toISOString().slice(0, 19), action, file }) + '\n');
+}
+const readLog = () => (fs.existsSync(LOG()) ? read(LOG()).split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
 function put(file, text) {
   if (fs.existsSync(file) && read(file) === text) return log(`unchanged ${file}`);
   write(file, text);
 }
-function upsert(file, body) {
+function upsert(file, body, tag = 'token-kit') {
+  const START = `<!-- ${tag}:start -->`, END = `<!-- ${tag}:end -->`;
   const block = `${START}\n${body.trim()}\n${END}`;
   const cur = fs.existsSync(file) ? read(file) : '';
   const re = new RegExp(`${START}[\\s\\S]*?${END}`);
@@ -61,13 +70,6 @@ const older = (a, b) => { const x = ver(a), y = ver(b); for (let i = 0; i < 3; i
 function ponytailPlugin() {
   try { return Object.entries(JSON.parse(read(path.join(HOME, '.claude', 'settings.json'))).enabledPlugins || {}).some(([k, v]) => v && k.startsWith('ponytail@')); } catch { return false; }
 }
-// always-loaded tokens this tool's install adds (bytes/4 estimate, upper bound)
-function added(tool) {
-  const rules = tok(rd('AGENTS.md'));
-  if (tool !== 'claude') return rules;
-  return (ponytailPlugin() && !flag('--force') ? 0 : rules) + tok(rd('claude/CLAUDE.snippet.md')) + tok(rd('claude/agents/opus-reviewer.md'));
-}
-
 function applySettings(file) {
   let s = {};
   if (fs.existsSync(file)) { try { s = JSON.parse(read(file)); } catch { return log(`skip settings: ${file} is not plain JSON`); } }
@@ -76,29 +78,6 @@ function applySettings(file) {
   if (!s.model) s.model = 'sonnet';
   s.env.CLAUDE_CODE_SUBAGENT_MODEL ||= 'haiku';
   write(file, JSON.stringify(s, null, 2) + '\n');
-}
-
-function installTool(t) {
-  const rules = rd('AGENTS.md');
-  if (t === 'claude') {
-    const c = path.join(HOME, '.claude');
-    const dup = ponytailPlugin() && !flag('--force');
-    if (dup) log('skip rules: the ponytail plugin already injects equivalent rules (--force to add anyway)');
-    upsert(path.join(c, 'CLAUDE.md'), (dup ? '' : rules + '\n\n') + rd('claude/CLAUDE.snippet.md'));
-    put(path.join(c, 'agents/opus-reviewer.md'), rd('claude/agents/opus-reviewer.md'));
-    if (flag('--with-ponytail-skill')) put(path.join(c, 'skills/ponytail/SKILL.md'), rd('skills/ponytail/SKILL.md'));
-    if (flag('--with-caveman')) put(path.join(c, 'skills/caveman/SKILL.md'), rd('optional/caveman/SKILL.md'));
-    if (flag('--apply-settings')) applySettings(path.join(c, 'settings.json'));
-  } else if (t === 'codex') {
-    upsert(path.join(HOME, '.codex', 'AGENTS.md'), rules);
-  } else if (t === 'copilot') {
-    upsert(path.join(path.resolve(opt('--repo', process.cwd())), '.github', 'copilot-instructions.md'), rules);
-  } else throw new Error(`unknown tool: ${t} (claude|codex|copilot|all)`);
-}
-
-function install() {
-  const tool = opt('--tool', 'all');
-  for (const t of tool === 'all' ? ['claude', 'codex', 'copilot'] : [tool]) installTool(t);
 }
 
 function audit() {
@@ -141,7 +120,7 @@ function fix() {
   for (const d of CLOUD) {
     if (!fs.existsSync(path.join(sk, d))) continue;
     log(`${dry ? '[dry-run] ' : ''}move ${d} -> skills.disabled/ (move back to undo)`);
-    if (!dry) { fs.mkdirSync(off, { recursive: true }); fs.renameSync(path.join(sk, d), path.join(off, d)); }
+    if (!dry) { fs.mkdirSync(off, { recursive: true }); fs.renameSync(path.join(sk, d), path.join(off, d)); record('move', path.join(sk, d)); }
   }
   if (has('rtk') && /enabled:\s*yes/i.test(run('rtk', ['telemetry', 'status']) || '')) {
     log(`${dry ? '[dry-run] ' : ''}rtk telemetry disable`);
@@ -160,12 +139,6 @@ function verify() {
   if (rd('AGENTS.md') !== rd('.github/copilot-instructions.md')) { log('.github/copilot-instructions.md differs from AGENTS.md'); bad++; }
   log(bad ? 'verify FAILED' : 'verify ok');
   process.exitCode = bad ? 1 : 0;
-}
-
-function budget() {
-  log(`tokens each install adds to every session (bytes/4 upper bound)\n  claude   ${added('claude')}${ponytailPlugin() ? '  (rules skipped: ponytail plugin on)' : ''}\n  codex    ${added('codex')}\n  copilot  ${added('copilot')}`);
-  log(`your ~/.claude/CLAUDE.md: ${fs.existsSync(path.join(HOME, '.claude', 'CLAUDE.md')) ? tok(read(path.join(HOME, '.claude', 'CLAUDE.md'))) : 0}`);
-  log('Each always-loaded token is re-read on every model call (~0.1x input price when cached): tokens x calls x 0.1, e.g. 400 x 120 = ~4.8k input-equivalent per session. Keep only text that saves more.');
 }
 
 function firstCalls(n) {
@@ -204,58 +177,52 @@ function measure() {
   log(`baseline median ${b.median} -> newest after setup ${after.first} (${d >= 0 ? '+' : ''}${d}, ${Math.round((100 * d) / b.median)}%)`);
 }
 
-async function setup() {
-  const yes = flag('--yes');
-  const cap = Number(opt('--max-added', 600));
-  const rl = yes ? null : readline.createInterface({ input: process.stdin, output: process.stdout });
-  const closed = rl ? new Promise((r) => rl.once('close', () => r('n'))) : null;
-  const ask = async (q) => { if (yes) return true; try { return /^y/i.test(String(await Promise.race([rl.question(`${q} [y/N] `), closed])).trim()); } catch { return false; } };
-  verify();
-  if (process.exitCode) return rl?.close();
-  log('\n== audit ==');
-  audit();
-  const rows = firstCalls(5);
-  const base = median(rows.map((r) => r.first));
+function saveBaseline() {
+  const base = median(firstCalls(5).map((r) => r.first));
   if (base) write(BASE(), JSON.stringify({ median: base, at: new Date().toISOString().slice(0, 16) }) + '\n');
-  log(`\nbaseline fixed prefix (median of last ${rows.length} sessions): ${base || 'unknown'} tokens`);
-  let total = 0;
-  const repo = opt('--repo', null);
-  const targets = [['claude', fs.existsSync(path.join(HOME, '.claude'))], ['codex', fs.existsSync(path.join(HOME, '.codex'))], ['copilot', !!repo]];
-  for (const [t, present] of targets) {
-    if (!present) continue;
-    const n = added(t);
-    if (total + n > cap) { log(`skip ${t}: would add ${n} tokens, over --max-added ${cap}`); continue; }
-    if (await ask(`Install ${t} rules (+${n} always-loaded tokens)?`)) { installTool(t); total += n; }
-  }
-  const cloud = fs.existsSync(path.join(HOME, '.claude', 'skills')) && fs.readdirSync(path.join(HOME, '.claude', 'skills')).some((d) => CLOUD.includes(d));
-  if (cloud && (await ask('Move Caveman Cloud skills to skills.disabled/ (reversible, removes their always-loaded descriptions)?'))) fix();
-  if (flag('--with-rtk') || (!yes && (await ask('Set up RTK (compresses shell output; confirmed step by step, verified at the end)?')))) await rtkSetup({ HOME, args, log, ask });
-  rl?.close();
-  log(`\nAlways-loaded tokens added by this setup: ${total}`);
-  log(`Now measure: open a NEW session in an empty folder, send:\n  ${TEST_PROMPT}\nthen run: node ${path.relative(process.cwd(), path.join(ROOT, 'kit.mjs')) || 'kit.mjs'} measure`);
+  return base;
 }
 
-async function rtk() {
+// one place builds the prompts (y/N and free text) and the dependency bag the modules share.
+// Input lines are queued, so piped or fast input is never dropped, and a closed stream means "no answer" (never "n").
+async function withIO(fn) {
   const yes = flag('--yes');
-  const rl = yes ? null : readline.createInterface({ input: process.stdin, output: process.stdout });
-  const closed = rl ? new Promise((r) => rl.once('close', () => r('n'))) : null;
-  const ask = async (q) => { if (yes) return true; try { return /^y/i.test(String(await Promise.race([rl.question(`${q} [y/N] `), closed])).trim()); } catch { return false; } };
-  try { await rtkSetup({ HOME, args, log, ask }); } finally { rl?.close(); }
+  const rl = yes ? null : readline.createInterface({ input: process.stdin });
+  const lines = []; let waiter = null; let ended = false;
+  rl?.on('line', (l) => { if (waiter) { const w = waiter; waiter = null; w(l); } else lines.push(l); });
+  rl?.on('close', () => { ended = true; if (waiter) { const w = waiter; waiter = null; w(null); } });
+  const prompt = (q) => { process.stdout.write(`${q} `); if (lines.length) return Promise.resolve(lines.shift()); if (ended) return Promise.resolve(null); return new Promise((r) => { waiter = r; }); };
+  const ask = async (q) => { if (yes) return true; const a = await prompt(`${q} [y/N]`); return a !== null && /^y/i.test(a.trim()); };
+  const say = async (q) => { if (yes) return ''; return String((await prompt(q)) ?? '').trim(); };
+  const d = { HOME, ROOT, args, flag, opt, log, rd, read, write, put, upsert, fix, applySettings, verify, audit, saveBaseline, rtkSetup, ponytailPlugin, tok, CLOUD, readLog, ask, say };
+  try { await fn(d); } finally { rl?.close(); }
 }
 
 async function models() {
   let mod;
   try { mod = await import('./models.mjs'); } catch { return log('models.mjs is not present (offline build): nothing to do.'); }
-  const yes = flag('--yes');
-  const rl = yes ? null : readline.createInterface({ input: process.stdin, output: process.stdout });
-  const closed = rl ? new Promise((r) => rl.once('close', () => r('n'))) : null;
-  const ask = async (q) => { if (yes) return true; try { return /^y/i.test(String(await Promise.race([rl.question(`${q} [y/N] `), closed])).trim()); } catch { return false; } };
-  const say = async (q) => { if (yes) return ''; try { return String(await Promise.race([rl.question(`${q} `), closed])).trim(); } catch { return ''; } };
-  try { await mod.modelsSetup({ HOME, args, log, ask, say }); } finally { rl?.close(); }
+  await withIO((d) => mod.modelsSetup(d));
 }
 
-const cmds = { setup, audit, install, fix, verify, budget, measure, rtk, models, inspect: () => inspect({ HOME, args, log, firstCalls }) };
+const cmds = {
+  setup: () => withIO(wiz.setup),
+  components: () => withIO(wiz.componentsJson),
+  budget: () => withIO(wiz.budget),
+  log: () => withIO(wiz.showLog),
+  uninstall: () => withIO(wiz.uninstall),
+  rtk: () => withIO(rtkSetup),
+  install: () => log('`install` was replaced by setup. Example: node kit.mjs setup --components rules --targets claude,codex,copilot --yes   (see USAGE.md)'),
+  models, audit, fix, verify, measure, inspect: () => inspect({ HOME, args, log, firstCalls }),
+};
 if (!cmds[cmd]) {
-  log('usage: node kit.mjs <setup|inspect|rtk|models|audit|install|fix|verify|budget|measure>\n  setup [--yes] [--repo PATH] [--max-added N]   guided, asks before each change\n  install [--tool claude|codex|copilot|all] [--repo PATH] [--with-ponytail-skill] [--with-caveman] [--apply-settings] [--force]\n  inspect [--tool claude|codex|copilot|all] [--repo PATH] [--no-usage]   what each agent loads before your first message + ranked fixes\n  rtk [--tool copilot|claude] [--scope repo|global] [--repo PATH] [--check] [--slim]   confirmed RTK install + hook + verification\n  models [--tool claude|copilot] [--live] [--model ID]   list Claude models live (opt-in, needs ANTHROPIC_API_KEY) and set defaults\n  common: [--dry-run] [--strict] [--last N]');
+  log(`usage: node kit.mjs <setup|components|inspect|rtk|models|audit|fix|verify|budget|measure|log|uninstall>
+  setup [--components rules,orchestration,ponytail,caveman,rtk,cleanup] [--targets claude,codex,copilot,agents-md,cursor,windsurf,cline]
+        [--repo PATH] [--yes] [--dry-run] [--max-added N] [--apply-settings] [--force]    checkbox menu, plan, ONE confirmation
+  components [--repo PATH]    JSON list of components and detected tools (for agents building their own checkbox UI)
+  inspect [--tool claude|codex|copilot|all] [--repo PATH] [--no-usage]    what each agent loads before your first message + ranked fixes
+  rtk [--audit-latest] [--version V] [--update] [--tool copilot|claude] [--scope repo|global] [--repo PATH] [--check] [--slim]
+  models [--tool claude|copilot] [--live] [--model ID]    optional; --live makes one confirmed call to Anthropic's models API
+  log [--last N]    every change this kit made          uninstall [--dry-run]    remove what the log says we added
+  common: [--dry-run] [--strict] [--last N]`);
   process.exitCode = cmd ? 2 : 0;
 } else await cmds[cmd]();

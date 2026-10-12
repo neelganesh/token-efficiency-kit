@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { auditRelease, stableTags, REPO } from './rtk-audit.mjs';
 
 const PIN = '0.49.0'; // RTK version whose source this kit audited
 const BLOCK = /\n?<!-- rtk-instructions[^>]*-->[\s\S]*?<!-- \/rtk-instructions -->\n?/;
@@ -70,10 +71,42 @@ export function slim(file, log, dry) {
   log(`removed RTK instruction block from ${file} (backup: ${file}.pre-token-kit). Re-running \`rtk init\` adds it back.`);
 }
 
-function installPlan() {
-  if (process.platform === 'win32') return ['winget', ['install', '--id', 'rtk-ai.rtk', '--exact', '--version', PIN]];
+function installPlan(version) {
+  if (process.platform === 'win32') return ['winget', ['install', '--id', 'rtk-ai.rtk', '--exact', '--version', version]];
   if (process.platform === 'darwin') return ['brew', ['install', 'rtk']];
-  return ['cargo', ['install', '--locked', '--git', 'https://github.com/rtk-ai/rtk', '--tag', `v${PIN}`]];
+  return ['cargo', ['install', '--locked', '--git', REPO, '--tag', `v${version}`]];
+}
+
+// installable releases: winget lists its own literal strings (some with a "v"), brew has one version, cargo can build any tag
+function installable(tags) {
+  if (process.platform === 'win32') {
+    const lit = {};
+    for (const m of sh('winget', ['show', '--id', 'rtk-ai.rtk', '--versions']).out.matchAll(/^\s*(v?(\d+\.\d+\.\d+))\s*$/gm)) lit[m[2]] = m[1];
+    return lit;
+  }
+  return Object.fromEntries(tags.map((t) => [t, t]));
+}
+
+// newest installable release above the reviewed one, only if a live audit is CLEAN and you agree; else the reviewed version, else the newest older installable
+async function chooseVersion({ log, ask }) {
+  const tags = stableTags(sh('git', ['ls-remote', '--tags', '--refs', REPO]).out);
+  const lit = installable(tags);
+  const have = Object.keys(lit).sort((a, b) => (older(a, b) ? 1 : -1));
+  if (!have.length) { log('could not list installable RTK releases; install manually from https://github.com/rtk-ai/rtk/releases and verify the checksum'); return null; }
+  const fallback = lit[PIN] ? PIN : have.find((v) => !older(PIN, v));
+  const fb = fallback || have[have.length - 1];
+  const newest = have.find((v) => older(PIN, v) && tags.includes(v));
+  if (newest) {
+    log(`newest installable release: ${newest}. Live audit against the reviewed ${PIN}:`);
+    const r = auditRelease({ base: PIN, tag: newest, log });
+    log(`verdict: ${r.verdict}   report: ${path.join(r.dir, 'report.md')}   hunks to read: ${path.join(r.dir, 'sensitive.diff')}`);
+    for (const x of r.high) log(`  HIGH   ${x.slice(0, 300)}`);
+    for (const x of r.medium) log(`  MEDIUM ${x.slice(0, 200)}`);
+    if (r.verdict === 'CLEAN' && await ask(`Audit is CLEAN. Install ${newest} (newer than the reviewed ${PIN})?`)) return lit[newest];
+    if (r.verdict !== 'CLEAN') log(`Not selected automatically. Read the report and diff (or have your agent do it), then accept with: node kit.mjs rtk --version ${lit[newest]}`);
+  }
+  if (fb !== PIN) log(`the reviewed ${PIN} is not installable on this platform; the closest is ${fb} (its source was not reviewed by this kit)`);
+  return lit[fb];
 }
 
 export async function rtkSetup({ HOME, args, log, ask }) {
@@ -85,14 +118,17 @@ export async function rtkSetup({ HOME, args, log, ask }) {
   if (!['copilot', 'claude'].includes(tool)) throw new Error('rtk --tool must be copilot or claude');
   const insFile = insFileOf(scope, repo, HOME);
   if (flag('--check')) { show(checks(o), log); return liveCheck(log, tool); }
+  if (flag('--audit-latest')) { await chooseVersion({ log, ask: async () => false }); return; }
   if (flag('--slim')) { if (flag('--yes') || await ask(`Remove RTK's instruction block from ${insFile}?`)) slim(insFile, log, dry); return; }
 
   log('RTK setup (confirmed step by step). Current state:');
   show(checks(o), log);
 
-  if (sh('rtk', ['--version']).missing) {
-    const [bin, a] = installPlan();
-    const pinned = process.platform === 'darwin' ? ' (Homebrew cannot pin a version)' : ` (pinned to the audited ${PIN})`;
+  if (sh('rtk', ['--version']).missing || flag('--update')) {
+    const version = opt('--version', null) || await chooseVersion({ log, ask });
+    if (!version) return;
+    const [bin, a] = installPlan(version);
+    const pinned = process.platform === 'darwin' ? ' (Homebrew cannot pin a version)' : ` (pinned to ${version}${version.replace(/^v/, '') === PIN ? ', the reviewed version' : ', not the reviewed version'})`;
     if (!(await ask(`Install RTK by running: ${bin} ${a.join(' ')}${pinned}? This downloads from the internet.`))) return log('skipped RTK install');
     if (dry) log(`[dry-run] ${bin} ${a.join(' ')}`);
     else {

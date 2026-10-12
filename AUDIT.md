@@ -41,3 +41,12 @@ RTK payload code beyond lines 150-166; per-turn overhead of all three on real wo
 ## models.mjs (added in v1.3.0)
 - The only kit code that sends an API key: one GET to `https://api.anthropic.com/v1/models`, header `x-api-key` from the `ANTHROPIC_API_KEY` environment variable, `anthropic-version: 2023-06-01`, redirects disabled, 15s timeout, host allow-list (`api.anthropic.com`, `127.0.0.1`, `localhost`), runs only with `--live` after a y/N prompt. The key is never written, logged or printed (tested). Optional: delete the file and `kit.mjs` reports "offline build".
 - Copilot: no documented model-listing API was found in GitHub's docs (2026-10-12), so none is called. The CLI documents `--model`, `COPILOT_MODEL` and `~/.copilot/settings.json` key `model`; the kit writes only the last.
+
+## Live RTK audit and install selection (v2.0.0)
+- `rtk-audit.mjs` uses git only: `ls-remote --tags` and a read-only blobless bare clone into a temp folder; nothing from RTK is built or run by the kit. It diffs the reviewed release (0.49.0) against the newest installable one and flags new code hosts, new dependencies, changes to `build.rs` / install scripts / release workflow / telemetry code, hook and init code, process spawning and `unsafe`. Test code and docs are ignored. Heuristic: a CLEAN verdict is not a security review, and a dev-only dependency still shows as a new dependency.
+- Measured on 2026-10-12 against the real repo: 0.49.0 to 0.50.0 returned REVIEW (`build.rs`, `.github/workflows/release.yml`, `src/core/telemetry.rs`, `src/core/telemetry_cmd.rs` changed; new dependency `temp-env`); 0.49.0 to 0.51.0 returned REVIEW with 189 files changed.
+- Platform fact found while building it: winget lists v0.50.0, v0.48.0, v0.47.0 and older, but not 0.49.0 or 0.51.0, and some entries carry a `v` prefix. The kit uses winget's literal strings and, when the reviewed version is not installable, offers the closest one and says plainly that its source was not reviewed.
+- The kit never installs a REVIEW release by itself; an explicit `--version` after reading `sensitive.diff` is required.
+
+## wizard.mjs (v2.0.0)
+- Local only. Writes rules files per `targets.json`, optional skills and agent file, appends `~/.token-kit/log.jsonl`, and `uninstall` reverses what the log lists (our markers and files only; edited files are left). Piped or closed input never counts as consent.

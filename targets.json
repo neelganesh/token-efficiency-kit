@@ -1,0 +1,9 @@
+{
+  "claude":    { "label": "Claude Code",                     "file": "~/.claude/CLAUDE.md",                "mode": "block" },
+  "codex":     { "label": "Codex",                           "file": "~/.codex/AGENTS.md",                 "mode": "block" },
+  "copilot":   { "label": "GitHub Copilot (VS Code, CLI)",   "file": ".github/copilot-instructions.md",    "mode": "block" },
+  "agents-md": { "label": "Any AGENTS.md reader (extra tokens if Copilot or Codex also reads it)", "file": "AGENTS.md", "mode": "block" },
+  "cursor":    { "label": "Cursor",   "file": ".cursor/rules/token-kit.mdc", "mode": "file", "header": "---\ndescription: Token-efficient working rules\nalwaysApply: true\n---\n" },
+  "windsurf":  { "label": "Windsurf", "file": ".windsurf/rules/token-kit.md", "mode": "file" },
+  "cline":     { "label": "Cline",    "file": ".clinerules/token-kit.md",     "mode": "file" }
+}
