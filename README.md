@@ -5,7 +5,7 @@ Cut the tokens your coding agent loads and reads, without adding any. Works with
 ## One-line install (asks before every change)
 
 ```bash
-git clone --depth 1 --branch v1.0.0 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
+git clone --depth 1 --branch v1.0.1 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
 ```
 
 PowerShell 5: replace `&&` with `;`. For Copilot, run inside your repo and add `--repo .` to `setup`. Needs Node 18+ and git.
@@ -17,7 +17,7 @@ Prefer an agent to do it all with one confirmation? Paste [AGENT-INSTALL-PROMPT.
 ## Rule: our files must not add cost
 
 Everything always-loaded is re-read on every model call. So:
-- The Claude install adds about 400 tokens total (routing block + one agent description). The rules block (~280) is **skipped** if the ponytail plugin already supplies equivalent rules.
+- The Claude install adds about 490 tokens (rules ~270 + routing ~100 + one agent description ~115), or about 220 if the ponytail plugin is on, because the rules block is **skipped** when that plugin already supplies equivalent rules.
 - The ponytail skill (`--with-ponytail-skill`) and caveman (`--with-caveman`) are **opt-in**: even their descriptions are always-loaded.
 - No hooks, no MCP servers, no statusline.
 - `node kit.mjs budget` prints the exact cost. `setup` prints "tokens added" and enforces the cap.
