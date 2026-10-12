@@ -5,14 +5,14 @@ Cut the tokens your coding agent loads and reads, without adding any. Works with
 ## One-line install (asks before every change)
 
 ```bash
-git clone --depth 1 --branch v1.0.1 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
+git clone --depth 1 --branch v1.1.0 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
 ```
 
 PowerShell 5: replace `&&` with `;`. For Copilot, run inside your repo and add `--repo .` to `setup`. Needs Node 18+ and git.
 
 `setup` verifies the kit, audits what you already have, records your **baseline**, then asks y/N for each change and shows the always-loaded tokens it would add. It refuses to add more than 600 (`--max-added N`). Rerunning is safe: files are backed up once as `*.pre-token-kit` and only our marked block is replaced.
 
-Prefer an agent to do it all with one confirmation? Paste [AGENT-INSTALL-PROMPT.md](AGENT-INSTALL-PROMPT.md).
+Not sure what bloats your setup? Run `node token-efficiency-kit/kit.mjs inspect` (read-only): it lists what each agent loads before your first message, your unused plugins, skills and MCP servers, and ranked fixes. All commands: [USAGE.md](USAGE.md). Prefer an agent? One-confirmation install: [AGENT-INSTALL-PROMPT.md](AGENT-INSTALL-PROMPT.md). Personalised audit of any agent: [AGENT-AUDIT-PROMPT.md](AGENT-AUDIT-PROMPT.md).
 
 ## Rule: our files must not add cost
 
@@ -49,6 +49,7 @@ Measured on a real 5-week history: output was ~4-7% of weighted cost, and cache 
 
 | Command | Effect |
 |---|---|
+| `inspect [--tool claude\|codex\|copilot\|all] [--repo PATH] [--no-usage]` | what each agent loads before your first message; MCP, plugin and skill waste; ranked fixes |
 | `setup [--yes] [--repo PATH] [--max-added N]` | guided audit + install + baseline |
 | `audit [--strict]` | read-only report (gateways, plaintext keys, cloud skills, skill count, RTK) |
 | `install --tool claude\|codex\|copilot\|all` | non-interactive install; flags `--with-ponytail-skill`, `--with-caveman`, `--apply-settings`, `--force` |
@@ -65,6 +66,6 @@ Pin a version and prefer a build from a reviewed tag: `cargo install --locked --
 
 ## Layout
 
-`AGENTS.md` canonical rules · `.github/copilot-instructions.md` identical copy · `claude/` routing block and agent · `skills/ponytail`, `optional/caveman` vendored · `kit.mjs` · `kit.test.mjs` · `AUDIT.md` · `MEASURE.md` · `AGENT-INSTALL-PROMPT.md` · `THIRD_PARTY/` licenses.
+`USAGE.md` · `AGENT-AUDIT-PROMPT.md` · `inspect.mjs` · `AGENTS.md` canonical rules · `.github/copilot-instructions.md` identical copy · `claude/` routing block and agent · `skills/ponytail`, `optional/caveman` vendored · `kit.mjs` · `kit.test.mjs` · `AUDIT.md` · `MEASURE.md` · `AGENT-INSTALL-PROMPT.md` · `THIRD_PARTY/` licenses.
 
 Vendored: ponytail from HEAD 9b58c1ff (2026-10-10, MIT, after v5.1.0); caveman from v3.2.0 / 2e08b91 (Apache-2.0). Update by diffing upstream, then regenerate `checksums.sha256`.

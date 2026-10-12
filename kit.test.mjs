@@ -96,3 +96,29 @@ test('setup without --yes and without a terminal answer installs nothing', () =>
   assert.equal(fs.existsSync(path.join(h, '.claude', 'CLAUDE.md')), false);
   assert.match(out, /added by this setup: 0/);
 });
+
+test('inspect ranks waste: unused plugin, duplicate skill, big CLAUDE.md, oversized description', () => {
+  const h = tmp(); const c = path.join(h, '.claude'); const proj = tmp();
+  const skill = (dir, name, desc) => { fs.mkdirSync(path.join(dir, name), { recursive: true }); fs.writeFileSync(path.join(dir, name, 'SKILL.md'), `---\nname: ${name}\ndescription: ${desc}\n---\nbody\n`); };
+  skill(path.join(c, 'skills'), 'dup', 'x'.repeat(700));
+  const v = path.join(c, 'plugins', 'cache', 'mk', 'big', '1.0.0');
+  for (let i = 0; i < 60; i++) skill(path.join(v, 'skills'), i === 0 ? 'dup' : `s${i}`, 'does something useful for planning and review '.repeat(3));
+  fs.writeFileSync(path.join(c, 'settings.json'), JSON.stringify({ enabledPlugins: { 'big@mk': true } }));
+  fs.writeFileSync(path.join(c, 'CLAUDE.md'), 'rule\n'.repeat(3000));
+  const proc = path.join(c, 'projects', 'p'); fs.mkdirSync(proc, { recursive: true });
+  fs.writeFileSync(path.join(proc, 'a.jsonl'), '{"type":"user"}\n'.repeat(1));
+  for (let i = 0; i < 25; i++) fs.writeFileSync(path.join(proc, `s${i}.jsonl`), '{"type":"user"}\n');
+  const out = execFileSync('node', [kit, 'inspect', '--tool', 'claude', '--repo', proj], { env: { ...process.env, KIT_HOME: h }, encoding: 'utf8' });
+  assert.match(out, /plugin big@mk: 60 skills/);
+  assert.match(out, /plugin big@mk costs .* never used/);
+  assert.match(out, /duplicate skill name "dup"/);
+  assert.match(out, /~\/\.claude\/CLAUDE\.md is \d+ tokens/);
+  assert.match(out, /oversized skill descriptions/);
+});
+
+test('inspect covers codex and copilot files', () => {
+  const h = tmp(); const repo = tmp(); fs.mkdirSync(path.join(repo, '.github'), { recursive: true });
+  fs.writeFileSync(path.join(repo, '.github', 'copilot-instructions.md'), 'rule\n'.repeat(2000));
+  const out = execFileSync('node', [kit, 'inspect', '--tool', 'copilot', '--repo', repo], { env: { ...process.env, KIT_HOME: h }, encoding: 'utf8' });
+  assert.match(out, /copilot-instructions\.md is \d+ tokens and is sent with every request/);
+});

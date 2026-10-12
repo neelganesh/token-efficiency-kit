@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import readline from 'node:readline/promises';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { inspect } from './inspect.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const HOME = process.env.KIT_HOME || os.homedir();
@@ -232,8 +233,8 @@ async function setup() {
   log(`Now measure: open a NEW session in an empty folder, send:\n  ${TEST_PROMPT}\nthen run: node ${path.relative(process.cwd(), path.join(ROOT, 'kit.mjs')) || 'kit.mjs'} measure`);
 }
 
-const cmds = { setup, audit, install, fix, verify, budget, measure };
+const cmds = { setup, audit, install, fix, verify, budget, measure, inspect: () => inspect({ HOME, args, log, firstCalls }) };
 if (!cmds[cmd]) {
-  log('usage: node kit.mjs <setup|audit|install|fix|verify|budget|measure>\n  setup [--yes] [--repo PATH] [--max-added N]   guided, asks before each change\n  install [--tool claude|codex|copilot|all] [--repo PATH] [--with-ponytail-skill] [--with-caveman] [--apply-settings] [--force]\n  common: [--dry-run] [--strict] [--last N]');
+  log('usage: node kit.mjs <setup|inspect|audit|install|fix|verify|budget|measure>\n  setup [--yes] [--repo PATH] [--max-added N]   guided, asks before each change\n  install [--tool claude|codex|copilot|all] [--repo PATH] [--with-ponytail-skill] [--with-caveman] [--apply-settings] [--force]\n  inspect [--tool claude|codex|copilot|all] [--repo PATH] [--no-usage]   what each agent loads before your first message + ranked fixes\n  common: [--dry-run] [--strict] [--last N]');
   process.exitCode = cmd ? 2 : 0;
 } else await cmds[cmd]();
