@@ -29,3 +29,11 @@ Method: shallow clones, read-only static review by subagents plus grep for netwo
 
 ## Unconfirmed
 RTK payload code beyond lines 150-166; per-turn overhead of all three on real workloads; the Go proxy/extension in caveman; whether Copilot billing on your plan is per request; Windows hook behavior of RTK.
+
+## RTK install and Copilot integration (checked 2026-10-12 against HEAD 27a659f)
+- Windows install: `winget install rtk-ai.rtk` (preferred over a manual zip; winget verifies its manifest hash). Needs `rg` on PATH for some filters.
+- `rtk init --copilot` (repo) writes `.github/hooks/rtk-rewrite.json` (one PreToolUse hook: `rtk hook copilot`, 5s timeout) and upserts an RTK block into `.github/copilot-instructions.md`. `-g` writes to `~/.copilot` (or `$COPILOT_HOME`).
+- VS Code Copilot Chat gets a transparent rewrite (`updatedInput`); Copilot CLI gets deny-with-suggestion, so keep the instruction block there.
+- The instruction block (~260 tokens) tells the model to prefix commands with `rtk`; with the VS Code hook it is redundant. `kit.mjs rtk --slim` removes it with a backup.
+- Verified on RTK 0.48.0: `rtk hook copilot` rewrote `git status` to `rtk git status` and passed `echo hi` through; `rtk rewrite "git status"` printed the rewrite with exit code 3 (so the kit reads output, not exit code); `rtk verify` reported 154/154 tests.
+- Unverified: VS Code's own switch for agent hooks on every version; confirm with the live check.

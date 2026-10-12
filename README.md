@@ -1,11 +1,11 @@
 # token-efficiency-kit
 
-Cut the tokens your coding agent loads and reads, without adding any. Works with **Claude Code, Codex and GitHub Copilot**. Local only: no network calls, no telemetry, no gateway, no hooks.
+Cut the tokens your coding agent loads and reads, without adding any. Works with **Claude Code, Codex and GitHub Copilot**. The kit's own code makes no network calls and has no telemetry, gateway or hooks. The only networked action is the optional RTK install, which runs your package manager after you confirm.
 
 ## One-line install (asks before every change)
 
 ```bash
-git clone --depth 1 --branch v1.1.0 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
+git clone --depth 1 --branch v1.2.0 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
 ```
 
 PowerShell 5: replace `&&` with `;`. For Copilot, run inside your repo and add `--repo .` to `setup`. Needs Node 18+ and git.
@@ -13,6 +13,21 @@ PowerShell 5: replace `&&` with `;`. For Copilot, run inside your repo and add `
 `setup` verifies the kit, audits what you already have, records your **baseline**, then asks y/N for each change and shows the always-loaded tokens it would add. It refuses to add more than 600 (`--max-added N`). Rerunning is safe: files are backed up once as `*.pre-token-kit` and only our marked block is replaced.
 
 Not sure what bloats your setup? Run `node token-efficiency-kit/kit.mjs inspect` (read-only): it lists what each agent loads before your first message, your unused plugins, skills and MCP servers, and ranked fixes. All commands: [USAGE.md](USAGE.md). Prefer an agent? One-confirmation install: [AGENT-INSTALL-PROMPT.md](AGENT-INSTALL-PROMPT.md). Personalised audit of any agent: [AGENT-AUDIT-PROMPT.md](AGENT-AUDIT-PROMPT.md).
+
+## GitHub Copilot in VS Code (most users): do this
+
+In your repo (needs Node 18+ and git; Windows, macOS or Linux):
+
+```bash
+git clone --depth 1 --branch v1.2.0 https://github.com/neelganesh/token-efficiency-kit.git ../token-efficiency-kit
+node ../token-efficiency-kit/kit.mjs inspect --tool copilot --repo .     # what Copilot loads per request, with fixes
+node ../token-efficiency-kit/kit.mjs setup --repo .                      # adds a ~270-token rules file, asks first
+node ../token-efficiency-kit/kit.mjs rtk --tool copilot --repo .         # optional: shell-output compression
+```
+
+The `rtk` command shows the install command and **asks before every step**: install (`winget` on Windows, pinned to the audited 0.49.0; `brew` on macOS; `cargo` on Linux), telemetry off, writing the hook, and removing RTK's redundant 260-token instruction block. It then verifies the install (see below). Restart VS Code afterwards.
+
+Honest note on cost: Copilot is billed per request (per Caveman's docs; check your plan), so shorter context mainly buys headroom and speed, not a smaller bill. The always-loaded file is sent with every request, so keep it small (this one is ~270 tokens).
 
 ## Rule: our files must not add cost
 
@@ -50,7 +65,8 @@ Measured on a real 5-week history: output was ~4-7% of weighted cost, and cache 
 | Command | Effect |
 |---|---|
 | `inspect [--tool claude\|codex\|copilot\|all] [--repo PATH] [--no-usage]` | what each agent loads before your first message; MCP, plugin and skill waste; ranked fixes |
-| `setup [--yes] [--repo PATH] [--max-added N]` | guided audit + install + baseline |
+| `rtk [--tool copilot\|claude] [--scope repo\|global] [--repo PATH] [--check] [--slim]` | confirmed RTK install + hook + PASS/FAIL verification |
+| `setup [--yes] [--repo PATH] [--max-added N] [--with-rtk]` | guided audit + install + baseline; offers RTK at the end |
 | `audit [--strict]` | read-only report (gateways, plaintext keys, cloud skills, skill count, RTK) |
 | `install --tool claude\|codex\|copilot\|all` | non-interactive install; flags `--with-ponytail-skill`, `--with-caveman`, `--apply-settings`, `--force` |
 | `fix [--dry-run]` | moves Caveman Cloud skills to `skills.disabled/`, disables RTK telemetry if on |
@@ -60,9 +76,19 @@ Measured on a real 5-week history: output was ~4-7% of weighted cost, and cache 
 
 Tests: `node --test kit.test.mjs`.
 
-## RTK (optional, install separately)
+## RTK (optional, guided, verified)
 
-Pin a version and prefer a build from a reviewed tag: `cargo install --locked --git https://github.com/rtk-ai/rtk --tag <tag>` (a self-built binary has no telemetry URL). Set `RTK_TELEMETRY_DISABLED=1`, decline consent at `rtk init`, inspect the hook it writes, and add `exclude_commands` for `cat` and `git diff`. Treat `rtk gain` as a rough guide. It cannot affect more than the Bash share of tool output (44% in our data; Read was 37%).
+```bash
+node kit.mjs rtk --tool copilot --repo .      # or --tool claude ; add --scope global for ~/.copilot
+node kit.mjs rtk --check --tool copilot --repo .   # verify only, changes nothing
+node kit.mjs rtk --slim --repo .              # remove RTK's redundant instruction block
+```
+
+What `rtk` does, asking y/N before each step: install RTK (`winget install --id rtk-ai.rtk --exact --version 0.49.0` on Windows, `brew install rtk` on macOS, `cargo install --locked --git ... --tag v0.49.0` on Linux; never a piped download), turn telemetry off (`rtk telemetry disable`, plus a persistent `RTK_TELEMETRY_DISABLED=1` on Windows via `setx`), run `rtk init --copilot` (writes `.github/hooks/rtk-rewrite.json`) or `rtk init -g` for Claude Code, and offer to remove RTK's instruction block from `copilot-instructions.md`.
+
+**Verification** (`--check`, also run at the end of the guided flow) prints PASS/WARN/FAIL for: the binary and its version; `rtk gain` working (rules out the unrelated "Rust Type Kit" package with the same name); telemetry off; the rewrite engine (`git status` becomes `rtk git status`); the hook file; the hook rewriting a real VS Code Copilot event and leaving other commands alone; `rtk verify` (hook integrity and 154 filter tests); and `rg` being available. Then the **live check** proves the agent really uses it: restart VS Code, ask agent mode to "run git status in the terminal", and `rtk gain --history` must show a new `git status` row.
+
+Notes: for Copilot CLI the hook only suggests the rewrite, so keep RTK's instruction block there; filters can truncate output, so add `exclude_commands` for `cat` and `git diff` if you need exact text; treat `rtk gain` totals as rough. RTK can only touch Bash output (44% of tool output in our data; Read was 37%). Undo: `rtk init --uninstall --copilot` in the repo.
 
 ## Layout
 

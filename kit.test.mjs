@@ -122,3 +122,21 @@ test('inspect covers codex and copilot files', () => {
   const out = execFileSync('node', [kit, 'inspect', '--tool', 'copilot', '--repo', repo], { env: { ...process.env, KIT_HOME: h }, encoding: 'utf8' });
   assert.match(out, /copilot-instructions\.md is \d+ tokens and is sent with every request/);
 });
+
+test('rtk --slim removes only the RTK block, keeps user text, backs up', () => {
+  const repo = tmp(); const f = path.join(repo, '.github', 'copilot-instructions.md');
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, 'my rule\n\n<!-- rtk-instructions v2 -->\nAlways prefix with rtk\n<!-- /rtk-instructions -->\n\nmore\n');
+  const out = run(tmp(), 'rtk', '--slim', '--yes', '--repo', repo);
+  const t = fs.readFileSync(f, 'utf8');
+  assert.match(out, /removed RTK instruction block/);
+  assert.ok(t.includes('my rule') && t.includes('more') && !t.includes('rtk-instructions'));
+  assert.ok(fs.existsSync(f + '.pre-token-kit'));
+});
+
+test('rtk --check without rtk on PATH reports FAIL and does not crash', () => {
+  const empty = tmp();
+  const out = execFileSync(process.execPath, [kit, 'rtk', '--check', '--repo', tmp()], { env: { KIT_HOME: tmp(), PATH: empty, Path: empty }, encoding: 'utf8' });
+  assert.match(out, /FAIL\s+binary/);
+  assert.match(out, /Live check/);
+});

@@ -8,6 +8,7 @@ import readline from 'node:readline/promises';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { inspect } from './inspect.mjs';
+import { rtkSetup } from './rtk.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const HOME = process.env.KIT_HOME || os.homedir();
@@ -228,13 +229,22 @@ async function setup() {
   }
   const cloud = fs.existsSync(path.join(HOME, '.claude', 'skills')) && fs.readdirSync(path.join(HOME, '.claude', 'skills')).some((d) => CLOUD.includes(d));
   if (cloud && (await ask('Move Caveman Cloud skills to skills.disabled/ (reversible, removes their always-loaded descriptions)?'))) fix();
+  if (flag('--with-rtk') || (!yes && (await ask('Set up RTK (compresses shell output; confirmed step by step, verified at the end)?')))) await rtkSetup({ HOME, args, log, ask });
   rl?.close();
   log(`\nAlways-loaded tokens added by this setup: ${total}`);
   log(`Now measure: open a NEW session in an empty folder, send:\n  ${TEST_PROMPT}\nthen run: node ${path.relative(process.cwd(), path.join(ROOT, 'kit.mjs')) || 'kit.mjs'} measure`);
 }
 
-const cmds = { setup, audit, install, fix, verify, budget, measure, inspect: () => inspect({ HOME, args, log, firstCalls }) };
+async function rtk() {
+  const yes = flag('--yes');
+  const rl = yes ? null : readline.createInterface({ input: process.stdin, output: process.stdout });
+  const closed = rl ? new Promise((r) => rl.once('close', () => r('n'))) : null;
+  const ask = async (q) => { if (yes) return true; try { return /^y/i.test(String(await Promise.race([rl.question(`${q} [y/N] `), closed])).trim()); } catch { return false; } };
+  try { await rtkSetup({ HOME, args, log, ask }); } finally { rl?.close(); }
+}
+
+const cmds = { setup, audit, install, fix, verify, budget, measure, rtk, inspect: () => inspect({ HOME, args, log, firstCalls }) };
 if (!cmds[cmd]) {
-  log('usage: node kit.mjs <setup|inspect|audit|install|fix|verify|budget|measure>\n  setup [--yes] [--repo PATH] [--max-added N]   guided, asks before each change\n  install [--tool claude|codex|copilot|all] [--repo PATH] [--with-ponytail-skill] [--with-caveman] [--apply-settings] [--force]\n  inspect [--tool claude|codex|copilot|all] [--repo PATH] [--no-usage]   what each agent loads before your first message + ranked fixes\n  common: [--dry-run] [--strict] [--last N]');
+  log('usage: node kit.mjs <setup|inspect|rtk|audit|install|fix|verify|budget|measure>\n  setup [--yes] [--repo PATH] [--max-added N]   guided, asks before each change\n  install [--tool claude|codex|copilot|all] [--repo PATH] [--with-ponytail-skill] [--with-caveman] [--apply-settings] [--force]\n  inspect [--tool claude|codex|copilot|all] [--repo PATH] [--no-usage]   what each agent loads before your first message + ranked fixes\n  rtk [--tool copilot|claude] [--scope repo|global] [--repo PATH] [--check] [--slim]   confirmed RTK install + hook + verification\n  common: [--dry-run] [--strict] [--last N]');
   process.exitCode = cmd ? 2 : 0;
 } else await cmds[cmd]();

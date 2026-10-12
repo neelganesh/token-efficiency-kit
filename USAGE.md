@@ -39,6 +39,15 @@ node kit.mjs setup [--yes] [--repo PATH] [--max-added N] [--dry-run]
 ```
 Verifies the kit, runs `audit`, stores your baseline, then asks before each install. Refuses to add more than `--max-added` tokens (default 600). `--yes --dry-run` prints the plan and writes nothing.
 
+### `rtk` : confirmed RTK install, hook and verification (VS Code Copilot first)
+```
+node kit.mjs rtk [--tool copilot|claude] [--scope repo|global] [--repo PATH] [--check] [--slim] [--yes] [--dry-run]
+```
+- **Guided (default):** shows current state, then asks y/N before each step: install RTK (winget / brew / cargo, pinned to audited 0.49.0 except brew), disable telemetry (plus `setx RTK_TELEMETRY_DISABLED 1` on Windows), run `rtk init --copilot` (repo) or `rtk init -g --copilot` (`--scope global`) or `rtk init -g` for Claude, and remove RTK's redundant instruction block (~260 tokens per request).
+- **`--check`:** read-only PASS/WARN/FAIL table: binary, `rtk gain`, telemetry, rewrite engine, hook file, hook rewriting a real VS Code Copilot event, passthrough of other commands, `rtk verify`, `rg`. Ends with the **live check**: restart VS Code, ask agent mode to run `git status`, confirm a new row in `rtk gain --history`.
+- **If RTK was installed but `rtk` is not found:** open a NEW terminal (the installer updates PATH for new shells only) and run `--check`.
+- **`--yes`** answers yes to every step including the install: use only when you have already decided. **Undo:** `rtk init --uninstall --copilot` in the repo.
+
 ### `install` : non-interactive install
 ```
 node kit.mjs install --tool claude|codex|copilot|all [--repo PATH] [--with-ponytail-skill] [--with-caveman] [--apply-settings] [--force] [--dry-run]
