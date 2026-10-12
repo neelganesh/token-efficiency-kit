@@ -142,3 +142,12 @@ test('uninstall reports RTK hook and install recorded in the log, with how to re
   assert.match(out, /rtk init --uninstall --copilot/);
   assert.match(out, /winget uninstall rtk-ai\.rtk/);
 });
+
+test('a crash prints a pointer to FALLBACK.md and exits non-zero', () => {
+  const [h, r] = withRepo();
+  const blocker = path.join(h, 'file'); fs.writeFileSync(blocker, 'x');
+  let out = '', code = 0;
+  try { out = run(blocker, undefined, 'setup', '--yes', '--components', 'rules', '--targets', 'claude', '--repo', r); } catch (e) { code = e.status; out = e.stdout; }
+  assert.match(out, /FALLBACK\.md/);
+  assert.equal(code, 1);
+});

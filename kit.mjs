@@ -225,4 +225,9 @@ if (!cmds[cmd]) {
   log [--last N]    every change this kit made          uninstall [--dry-run]    remove what the log says we added
   common: [--dry-run] [--strict] [--last N]`);
   process.exitCode = cmd ? 2 : 0;
-} else await cmds[cmd]();
+} else {
+  try { await cmds[cmd](); } catch (e) {
+    log(`\nkit failed: ${e.message}\nNothing else was changed after this point. Run: node kit.mjs log   Then follow FALLBACK.md (${path.join(ROOT, 'FALLBACK.md')}).`);
+    process.exitCode = 1;
+  }
+}

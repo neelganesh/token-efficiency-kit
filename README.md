@@ -9,7 +9,7 @@ Paste the prompt in [PROMPT.md](PROMPT.md) into your coding agent. It pulls this
 ## Or one command
 
 ```bash
-git clone --depth 1 --branch v2.0.2 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
+git clone --depth 1 --branch v2.0.3 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
 ```
 
 Works on macOS, Linux and Windows (CI runs the tests on all three). On macOS RTK installs with `brew install rtk` (Homebrew cannot pin a version, so the kit audits whatever version brew offers); on Windows PowerShell 5, replace `&&` with `;`. Needs Node 18+ and git. You get a checkbox list (type numbers to toggle, Enter to continue):
@@ -81,6 +81,6 @@ Copilot is billed per token in AI credits (1 credit = $0.01) with cached input a
 
 ## More
 
-[USAGE.md](USAGE.md) all commands · [PROMPT.md](PROMPT.md) one-prompt setup · [AGENT-AUDIT-PROMPT.md](AGENT-AUDIT-PROMPT.md) personalised audit of any agent · [COPILOT-MODELS.md](COPILOT-MODELS.md) · [MEASURE.md](MEASURE.md) · [AUDIT.md](AUDIT.md) · `THIRD_PARTY/` licenses.
+[USAGE.md](USAGE.md) all commands · [PROMPT.md](PROMPT.md) one-prompt setup · [AGENT-AUDIT-PROMPT.md](AGENT-AUDIT-PROMPT.md) personalised audit of any agent · [COPILOT-MODELS.md](COPILOT-MODELS.md) · [MEASURE.md](MEASURE.md) · [AUDIT.md](AUDIT.md) · [FALLBACK.md](FALLBACK.md) (read only if something fails; the kit's error message points to it) · `THIRD_PARTY/` licenses.
 
 Layout: `kit.mjs` (commands) · `wizard.mjs` (menu, plan, log, uninstall) · `rtk.mjs`, `rtk-audit.mjs` · `inspect.mjs` · `models.mjs` (optional) · `targets.json` · `AGENTS.md` and `.github/copilot-instructions.md` (identical rules) · `claude/` · `skills/ponytail`, `optional/caveman` (vendored: ponytail HEAD 9b58c1ff MIT, caveman v3.2.0 Apache-2.0).

@@ -3,16 +3,17 @@
 Paste the block into Claude Code, GitHub Copilot (agent mode), Codex, Cursor or any coding agent that can run shell commands (needs git and Node 18+). It pulls this project at a pinned release, shows a checkbox menu, audits what it installs (RTK is audited live), applies your choices after one confirmation, and tells you how to verify.
 
 ```
-Set up token-efficient defaults from https://github.com/neelganesh/token-efficiency-kit at release tag v2.0.2. You are my installer: be careful, auditable and brief. Nothing changes until I confirm the plan.
+Set up token-efficient defaults from https://github.com/neelganesh/token-efficiency-kit at release tag v2.0.3. You are my installer: be careful, auditable and brief. Nothing changes until I confirm the plan.
 
 HARD RULES
 - Never pipe a download into a shell. Only network actions allowed: git clone of that URL, and, only if I choose RTK, the RTK steps below. Do not use telemetry, gateways, or any other install.
 - Never print secrets. Back up before changing (the kit does). Do not delete anything of mine; if my existing setup (CLAUDE.md, AGENTS.md, skills, plugins) is newer or better, keep it and tell me what differs.
 - If anything conflicts with managed or enterprise policy, stop and ask.
+- If a step fails or the kit crashes, stop and only then read FALLBACK.md in the cloned folder and follow it. Do not read it otherwise.
 - Always-loaded tokens added per tool must stay <= 600 and my fixed context must not go up (verified at the end).
 
 1. PULL AND CHECK
-   git clone --depth 1 --branch v2.0.2 <URL> into a new empty folder outside any project. Print the commit SHA. Read README.md, kit.mjs, wizard.mjs, targets.json and AGENTS.md. Search the .mjs files for "http", "fetch(", "node:net", "node:http", "curl", "wget". Expected: rtk.mjs and rtk-audit.mjs (git and RTK URLs, used only after I choose RTK); models.mjs (optional, one fetch to api.anthropic.com, only with --live); no other hits. Run: node kit.mjs verify ; node --test. Both must pass, or stop.
+   git clone --depth 1 --branch v2.0.3 <URL> into a new empty folder outside any project. Print the commit SHA. Read README.md, kit.mjs, wizard.mjs, targets.json and AGENTS.md. Search the .mjs files for "http", "fetch(", "node:net", "node:http", "curl", "wget". Expected: rtk.mjs and rtk-audit.mjs (git and RTK URLs, used only after I choose RTK); models.mjs (optional, one fetch to api.anthropic.com, only with --live); no other hits. Run: node kit.mjs verify ; node --test. Both must pass, or stop.
 
 2. SHOW ME THE MENU
    Run: node kit.mjs components --repo <my repo path or .>   (JSON). Using your own multi-select UI (or a numbered checklist if you have none), ask me to tick what I want. Show each item's token cost and note exactly as given. Defaults are pre-ticked.
