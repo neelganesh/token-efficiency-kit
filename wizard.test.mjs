@@ -147,7 +147,7 @@ test('a crash prints a pointer to FALLBACK.md and exits non-zero', () => {
   const [h, r] = withRepo();
   const blocker = path.join(h, 'file'); fs.writeFileSync(blocker, 'x');
   let out = '', code = 0;
-  try { out = run(blocker, undefined, 'setup', '--yes', '--components', 'rules', '--targets', 'claude', '--repo', r); } catch (e) { code = e.status; out = e.stdout; }
+  try { out = run(blocker, undefined, 'setup', '--yes', '--components', 'rules', '--targets', 'claude', '--repo', r); } catch (e) { code = e.status; out = String(e.stderr); }
   assert.match(out, /FALLBACK\.md/);
   assert.equal(code, 1);
 });

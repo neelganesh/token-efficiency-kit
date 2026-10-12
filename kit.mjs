@@ -227,7 +227,7 @@ if (!cmds[cmd]) {
   process.exitCode = cmd ? 2 : 0;
 } else {
   try { await cmds[cmd](); } catch (e) {
-    log(`\nkit failed: ${e.message}\nNothing else was changed after this point. Run: node kit.mjs log   Then follow FALLBACK.md (${path.join(ROOT, 'FALLBACK.md')}).`);
+    console.error(`\nkit failed: ${e.message}\nNothing else was changed after this point. Run: node kit.mjs log   Then follow FALLBACK.md (${path.join(ROOT, 'FALLBACK.md')}).`);
     process.exitCode = 1;
   }
 }
