@@ -5,7 +5,7 @@ Cut the tokens your coding agent loads and reads, without adding any. Works with
 ## One-line install (asks before every change)
 
 ```bash
-git clone --depth 1 --branch v1.2.0 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
+git clone --depth 1 --branch v1.2.1 https://github.com/neelganesh/token-efficiency-kit.git && node token-efficiency-kit/kit.mjs setup
 ```
 
 PowerShell 5: replace `&&` with `;`. For Copilot, run inside your repo and add `--repo .` to `setup`. Needs Node 18+ and git.
@@ -19,7 +19,7 @@ Not sure what bloats your setup? Run `node token-efficiency-kit/kit.mjs inspect`
 In your repo (needs Node 18+ and git; Windows, macOS or Linux):
 
 ```bash
-git clone --depth 1 --branch v1.2.0 https://github.com/neelganesh/token-efficiency-kit.git ../token-efficiency-kit
+git clone --depth 1 --branch v1.2.1 https://github.com/neelganesh/token-efficiency-kit.git ../token-efficiency-kit
 node ../token-efficiency-kit/kit.mjs inspect --tool copilot --repo .     # what Copilot loads per request, with fixes
 node ../token-efficiency-kit/kit.mjs setup --repo .                      # adds a ~270-token rules file, asks first
 node ../token-efficiency-kit/kit.mjs rtk --tool copilot --repo .         # optional: shell-output compression
@@ -27,7 +27,7 @@ node ../token-efficiency-kit/kit.mjs rtk --tool copilot --repo .         # optio
 
 The `rtk` command shows the install command and **asks before every step**: install (`winget` on Windows, pinned to the audited 0.49.0; `brew` on macOS; `cargo` on Linux), telemetry off, writing the hook, and removing RTK's redundant 260-token instruction block. It then verifies the install (see below). Restart VS Code afterwards.
 
-Honest note on cost: Copilot is billed per request (per Caveman's docs; check your plan), so shorter context mainly buys headroom and speed, not a smaller bill. The always-loaded file is sent with every request, so keep it small (this one is ~270 tokens).
+Cost note: GitHub now bills Copilot **per token** in AI credits (1 credit = $0.01), with cached input at 10% of the input price (GPT-6 Sol $2.00 input / $0.20 cached / $10.00 output per 1M tokens; GPT-6 Luna $0.10 / $0.01 / $0.50; context above 272K costs more). So context size and caching matter in Copilot as in Claude Code. Older plans may still use the legacy per-request billing; check which applies to you. The always-loaded file is sent with every request, so keep it small (this one is ~270 tokens). Model guidance for GPT-6 Sol and Luna: [COPILOT-MODELS.md](COPILOT-MODELS.md).
 
 ## Rule: our files must not add cost
 
@@ -55,7 +55,7 @@ In our test, disabling a 300-skill plugin and three connectors cut the prefix fr
 | `AGENTS.md` rules (~280 tokens) | Derived from ponytail's rules; cut over-building | on (skipped if ponytail plugin is on) |
 | Model routing + `opus-reviewer` agent (Claude Code) | Anthropic pricing: Haiku ~20x cheaper than Sonnet, Opus 2x Sonnet | on |
 | `skills/ponytail` (MIT, vendored) | Author's benchmark: -45% output tokens, -26% cost, same hidden-test pass rate (87/90 vs 86/90). Self-run. | off |
-| `optional/caveman` (Apache-2.0, vendored) | Author's own numbers: ~3% output, ~0% of the total bill; no saving on per-request Copilot billing | off |
+| `optional/caveman` (Apache-2.0, vendored) | Author's own numbers: ~3% output, ~0% of the total bill; on a per-token Copilot plan expect only the small output share (measure before trusting) | off |
 | RTK | Real for noisy shell output; its headline "% saved" is inflated. Not bundled. | separate |
 
 Measured on a real 5-week history: output was ~4-7% of weighted cost, and cache reads dominated, so output-trimming tools cannot move the bill much. The levers that matter: a small fixed prefix, short sessions, and a healthy prompt cache (keep it above 90%). [AUDIT.md](AUDIT.md) has the security and telemetry findings for each tool.

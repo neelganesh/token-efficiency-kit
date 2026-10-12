@@ -5,7 +5,7 @@ Paste into Claude Code, Codex or GitHub Copilot agent mode with shell access, gi
 ```
 Audit my agent setup for wasted initial context (everything loaded before my first message) and recommend personalised fixes. Read-only until I approve.
 
-Rules: Clone only https://github.com/neelganesh/token-efficiency-kit at tag v1.2.0 (git clone --depth 1 --branch v1.2.0) into a new empty folder outside any project; no other network access. Read kit.mjs, inspect.mjs and rtk.mjs first and search them for "http", "fetch(", "node:net", "node:http", "curl", "wget"; the only expected hit is the RTK repository URL in rtk.mjs (used only in a cargo install command that runs after I confirm). Never print secrets. Change nothing yet.
+Rules: Clone only https://github.com/neelganesh/token-efficiency-kit at tag v1.2.1 (git clone --depth 1 --branch v1.2.1) into a new empty folder outside any project; no other network access. Read kit.mjs, inspect.mjs and rtk.mjs first and search them for "http", "fetch(", "node:net", "node:http", "curl", "wget"; the only expected hit is the RTK repository URL in rtk.mjs (used only in a cargo install command that runs after I confirm). Never print secrets. Change nothing yet.
 
 1. Run: node kit.mjs inspect --tool all   (add --repo <my repo path> if I use Copilot or Codex in a repo)
    Run: node kit.mjs audit

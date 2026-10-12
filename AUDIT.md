@@ -15,7 +15,7 @@ Method: shallow clones, read-only static review by subagents plus grep for netwo
 - Safe (no network): `skills/caveman/SKILL.md`, hooks in `src/hooks/*.js` (only exec: stats subprocess, 2.5s).
 - Phones home / sends data: the caveman CLI (telemetry ON by default to a Supabase function: commands, token counts, install ID, OS, IP; opt out `CAVEMAN_TELEMETRY=0` / `DO_NOT_TRACK=1`); `caveman-setup` and `-discover` (route app LLM traffic via gateway.caveman.so with a CAVE_API_KEY); `caveman-compress` (sends file contents to a model provider).
 - Installers: a piped-download shell installer and `npx -y github:...`; hook installers fetch from the unpinned `main` branch; `--with-init` edits many agent configs. Not used here.
-- Savings (author's own `docs/HONEST-NUMBERS.md`): caveman level ~3% output reduction vs "Answer concisely." control (n=10, single run, older text); input saving 0%; rule overhead ~1,160 tokens plus a per-prompt reminder, unmeasured. Outside tests cited: -44% billed output but +0.06% total cost; net bill within +/-0.2%. Copilot is billed per request.
+- Savings (author's own `docs/HONEST-NUMBERS.md`): caveman level ~3% output reduction vs "Answer concisely." control (n=10, single run, older text); input saving 0%; rule overhead ~1,160 tokens plus a per-prompt reminder, unmeasured. Outside tests cited: -44% billed output but +0.06% total cost; net bill within +/-0.2%. Caveman's docs say Copilot is billed per request, but GitHub's current docs show per-token billing (legacy plans still per request), so that note is outdated for most plans.
 - Verdict: optional only, default off. Never install the cloud/gateway skills (`fix` disables them).
 
 ## RTK (rtk-ai/rtk, Apache-2.0, audited HEAD 27a659f, Cargo 0.49.0, latest tag v0.51.0)
@@ -28,7 +28,7 @@ Method: shallow clones, read-only static review by subagents plus grep for netwo
 - Verdict: useful for noisy shell output, install separately, pinned, telemetry off, exclusions set.
 
 ## Unconfirmed
-RTK payload code beyond lines 150-166; per-turn overhead of all three on real workloads; the Go proxy/extension in caveman; whether Copilot billing on your plan is per request; Windows hook behavior of RTK.
+RTK payload code beyond lines 150-166; per-turn overhead of all three on real workloads; the Go proxy/extension in caveman; which Copilot billing model (per-token AI credits or legacy per-request) applies to your plan; Windows hook behavior of RTK.
 
 ## RTK install and Copilot integration (checked 2026-10-12 against HEAD 27a659f)
 - Windows install: `winget install rtk-ai.rtk` (preferred over a manual zip; winget verifies its manifest hash). Needs `rg` on PATH for some filters.
